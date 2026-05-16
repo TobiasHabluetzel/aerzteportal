@@ -21,7 +21,7 @@ public class NisGraphQLService(
         var token = await session.GetAccessTokenAsync(ct);
         if (token is null) return null;
 
-        var path = config["Nis:GraphqlPath"] ?? "api/graphql";
+        var path = config["Nis:GraphqlPath"] ?? "graphql";
         var client = httpClientFactory.CreateClient("Nis");
 
         var body = JsonSerializer.Serialize(new
