@@ -1,0 +1,6 @@
+@Aerzteportal.Api_HostAddress = http://localhost:5214
+
+GET {{Aerzteportal.Api_HostAddress}}/healthz
+Accept: application/json
+
+###

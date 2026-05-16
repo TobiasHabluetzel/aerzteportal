@@ -1,0 +1,23 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Sparkasse / S-Reiseschutz */
+    --brand-red: 204 0 0;
+    --brand-red-dark: 163 0 0;
+    --brand-red-light: 245 230 230;
+  }
+
+  [data-brand="bryte"] {
+    /* Bryte Travel Insurance — deep teal primary, gold accent in light tint */
+    --brand-red: 0 82 115;
+    --brand-red-dark: 0 60 84;
+    --brand-red-light: 235 244 248;
+  }
+
+  body {
+    @apply bg-gray-50 text-gray-900 antialiased;
+  }
+}
