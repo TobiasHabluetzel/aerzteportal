@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import Layout from '../components/Layout'
 import Questionnaire from '../components/Questionnaire'
-import { getCase, submitTaskAnswers, uploadFiles, type CaseDetail, type TaskItem } from '../api/cases'
+import DocumentViewer from '../components/DocumentViewer'
+import { getCase, submitTaskAnswers, uploadFiles, type CaseDetail, type CommunicationFile, type TaskItem } from '../api/cases'
 
 function formatDate(iso?: string | null) {
   if (!iso) return '—'
@@ -101,6 +102,7 @@ export default function CaseDetailPage() {
   const [c, setC] = useState<CaseDetail | null>(null)
   const [error, setError] = useState('')
   const [reloadKey, setReloadKey] = useState(0)
+  const [viewing, setViewing] = useState<CommunicationFile | null>(null)
 
   useEffect(() => {
     if (!id) return
@@ -181,15 +183,20 @@ export default function CaseDetailPage() {
                   }
                   return files.map(f => (
                     <li key={`${doc.id}-${f.id}`} className="py-2 flex items-center justify-between gap-3">
-                      <span className="text-sm text-gray-700 truncate">{f.name ?? doc.subject ?? '(ohne Betreff)'}</span>
-                      <a
-                        href={`/api/files/${encodeURIComponent(f.id)}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                      <button
+                        type="button"
+                        onClick={() => setViewing(f)}
+                        className="text-left text-sm text-gray-700 truncate hover:text-brand-red"
+                      >
+                        {f.name ?? doc.subject ?? '(ohne Betreff)'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setViewing(f)}
                         className="text-xs font-semibold text-brand-red hover:underline"
                       >
-                        Herunterladen
-                      </a>
+                        Ansehen
+                      </button>
                     </li>
                   ))
                 })}
@@ -213,6 +220,15 @@ export default function CaseDetailPage() {
             <UploadBox caseId={id} onUploaded={reload} />
           </Section>
         </div>
+      )}
+
+      {viewing && (
+        <DocumentViewer
+          fileId={viewing.id}
+          filename={viewing.name}
+          contentType={viewing.contentType}
+          onClose={() => setViewing(null)}
+        />
       )}
     </Layout>
   )
