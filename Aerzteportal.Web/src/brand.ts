@@ -10,7 +10,7 @@ export interface Brand {
 
 const BRAND: Brand = {
   name: 'Ärzteportal',
-  logoLetter: 'Ä',
+  logoLetter: 'A',
   footer: [
     { label: 'Impressum', href: '#' },
     { label: 'Datenschutz', href: '#' },

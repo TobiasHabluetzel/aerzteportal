@@ -4,10 +4,10 @@
 
 @layer base {
   :root {
-    /* Ärzteportal — calm teal, less "insurance red", reads more medical */
-    --brand-red: 0 82 115;
-    --brand-red-dark: 0 60 84;
-    --brand-red-light: 235 244 248;
+    /* Ärzteportal — same red as the deutsche shell */
+    --brand-red: 204 0 0;
+    --brand-red-dark: 163 0 0;
+    --brand-red-light: 245 230 230;
   }
 
   body {
