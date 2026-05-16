@@ -46,16 +46,79 @@ export async function listCases(status: string = 'OPEN'): Promise<CasesPage> {
   return res.json()
 }
 
+export interface CommunicationFile {
+  id: string
+  name?: string | null
+  contentType?: string | null
+}
+
 export interface CommunicationItem {
+  __typename?: string
   id: string | number
   subject?: string | null
   tags?: { name: string }[] | null
+  files?: CommunicationFile[] | null
 }
 
+export type QuestionnaireElement =
+  | { __typename: 'QuestionnaireDateTimeQuestion'; key: string; name: string; useTime?: boolean }
+  | { __typename: 'QuestionnaireChoiceQuestion'; key: string; name: string; canSelectMultiple?: boolean; options: { key: string; text: string }[] }
+  | { __typename: 'QuestionnaireTextQuestion'; key: string; name: string }
+  | { __typename: 'QuestionnaireBooleanQuestion'; key: string; name: string }
+
+export type QuestionnaireAnswer =
+  | { __typename: 'DateTimeQuestionnaireAnswer'; questionId: string; dateTimeValue: string }
+  | { __typename: 'ChoiceQuestionnaireAnswer'; questionId: string; choiceValue: string[] }
+  | { __typename: 'TextQuestionnaireAnswer'; questionId: string; textValue: string }
+  | { __typename: 'BoolQuestionnaireAnswer'; questionId: string; boolValue: boolean }
+
 export interface TaskItem {
-  id: string | number
-  name?: string | null
+  id: number
+  isCompleted: boolean
   tags?: { name: string }[] | null
+  questionnaire?: {
+    visibleSections?: string[] | null
+    visibleQuestions?: string[] | null
+    unansweredQuestions?: string[] | null
+    answers: QuestionnaireAnswer[]
+    definition: {
+      sections: { key: string; elements: QuestionnaireElement[] }[]
+    }
+  } | null
+}
+
+// What we POST back to /api/cases/{caseId}/tasks/{taskId}/answers
+export interface AnswerInput {
+  questionId: string
+  type: 'date' | 'choice' | 'text' | 'bool'
+  date?: string
+  choices?: string[]
+  stringValue?: string
+  bool?: boolean
+}
+
+export async function submitTaskAnswers(
+  caseId: string,
+  taskId: number,
+  answers: AnswerInput[],
+  completeTask: boolean,
+): Promise<void> {
+  const res = await fetch(`/api/cases/${encodeURIComponent(caseId)}/tasks/${taskId}/answers`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ answers, completeTask }),
+  })
+  if (!res.ok) throw new Error(`${res.status}`)
+}
+
+export async function uploadFiles(caseId: string, files: File[]): Promise<void> {
+  const form = new FormData()
+  for (const f of files) form.append('files', f, f.name)
+  const res = await fetch(`/api/cases/${encodeURIComponent(caseId)}/upload`, {
+    method: 'POST',
+    body: form,
+  })
+  if (!res.ok) throw new Error(`${res.status}`)
 }
 
 export interface CaseDetail {

@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import Layout from '../components/Layout'
-import { getCase, type CaseDetail } from '../api/cases'
+import Questionnaire from '../components/Questionnaire'
+import { getCase, submitTaskAnswers, uploadFiles, type CaseDetail, type TaskItem } from '../api/cases'
 
 function formatDate(iso?: string | null) {
   if (!iso) return '—'
@@ -26,18 +27,89 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   )
 }
 
+function taskLabel(t: TaskItem): string {
+  // NIS's Task type doesn't carry a display name; use the first section's
+  // key as a friendly-ish label, falling back to the task id.
+  const firstSection = t.questionnaire?.definition.sections[0]?.key
+  return firstSection ?? `Aufgabe ${t.id}`
+}
+
+function TaskBlock({ task, caseId, onChange }: { task: TaskItem; caseId: string; onChange: () => void }) {
+  const [open, setOpen] = useState(!task.isCompleted)
+  return (
+    <div className="border border-gray-100 rounded-lg">
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-gray-50"
+      >
+        <span className="text-sm font-medium text-gray-700">{taskLabel(task)}</span>
+        <span className="flex items-center gap-2">
+          {task.isCompleted && <span className="text-xs text-green-700 bg-green-50 rounded px-2 py-0.5">Abgeschlossen</span>}
+          <span className="text-xs text-gray-400">{open ? 'Schließen' : 'Öffnen'}</span>
+        </span>
+      </button>
+      {open && (
+        <div className="border-t border-gray-100 px-4 py-4 bg-gray-50/40">
+          <Questionnaire
+            task={task}
+            onSubmit={async (answers, complete) => {
+              await submitTaskAnswers(caseId, task.id, answers, complete)
+              onChange()
+            }}
+          />
+        </div>
+      )}
+    </div>
+  )
+}
+
+function UploadBox({ caseId, onUploaded }: { caseId: string; onUploaded: () => void }) {
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+
+  async function pick(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? [])
+    if (files.length === 0) return
+    e.target.value = ''
+    setError('')
+    setBusy(true)
+    try {
+      await uploadFiles(caseId, files)
+      onUploaded()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Upload fehlgeschlagen.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="flex items-center gap-3">
+      <label className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold cursor-pointer ${busy ? 'bg-gray-200 text-gray-500' : 'bg-brand-red text-white hover:opacity-90'}`}>
+        {busy ? 'Hochladen…' : 'Dateien auswählen'}
+        <input type="file" multiple onChange={pick} disabled={busy} className="hidden" />
+      </label>
+      {error && <span className="text-sm text-red-600">{error}</span>}
+    </div>
+  )
+}
+
 export default function CaseDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [c, setC] = useState<CaseDetail | null>(null)
   const [error, setError] = useState('')
+  const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
     if (!id) return
     getCase(id)
       .then(setC)
       .catch(e => setError(e instanceof Error ? e.message : 'Failed'))
-  }, [id])
+  }, [id, reloadKey])
+
+  const reload = () => setReloadKey(k => k + 1)
 
   return (
     <Layout wide showBack onBack={() => navigate('/cases')}>
@@ -49,9 +121,8 @@ export default function CaseDetailPage() {
 
       {!c && !error && <p className="text-sm text-gray-400">Lade Fall…</p>}
 
-      {c && (
+      {c && id && (
         <div className="space-y-4">
-          {/* Header */}
           <div className="bg-white rounded-xl shadow-sm px-6 py-5">
             <div className="flex items-start justify-between gap-4">
               <div>
@@ -68,7 +139,6 @@ export default function CaseDetailPage() {
             </div>
           </div>
 
-          {/* Initial data */}
           <Section title="Falldaten">
             <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-3">
               <Field label="Patient">{c.claimant?.client?.name ?? '—'}</Field>
@@ -94,53 +164,53 @@ export default function CaseDetailPage() {
             )}
           </Section>
 
-          {/* Documents */}
           <Section title="Dokumente">
             {!c.communications || c.communications.length === 0 ? (
               <p className="text-sm text-gray-500">Keine Dokumente für das Ärzteportal hinterlegt.</p>
             ) : (
               <ul className="divide-y divide-gray-100">
-                {c.communications.map(doc => (
-                  <li key={String(doc.id)} className="py-2 flex items-center justify-between gap-3">
-                    <span className="text-sm text-gray-700">{doc.subject ?? '(ohne Betreff)'}</span>
-                    <button
-                      type="button"
-                      className="text-xs font-semibold text-brand-red hover:underline"
-                      onClick={() => alert('Download wird im nächsten Schritt aktiviert.')}
-                    >
-                      Herunterladen
-                    </button>
-                  </li>
-                ))}
+                {c.communications.flatMap(doc => {
+                  const files = doc.files ?? []
+                  if (files.length === 0) {
+                    return [(
+                      <li key={String(doc.id)} className="py-2 flex items-center justify-between gap-3">
+                        <span className="text-sm text-gray-700">{doc.subject ?? '(ohne Betreff)'}</span>
+                        <span className="text-xs text-gray-400">keine Datei</span>
+                      </li>
+                    )]
+                  }
+                  return files.map(f => (
+                    <li key={`${doc.id}-${f.id}`} className="py-2 flex items-center justify-between gap-3">
+                      <span className="text-sm text-gray-700 truncate">{f.name ?? doc.subject ?? '(ohne Betreff)'}</span>
+                      <a
+                        href={`/api/files/${encodeURIComponent(f.id)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs font-semibold text-brand-red hover:underline"
+                      >
+                        Herunterladen
+                      </a>
+                    </li>
+                  ))
+                })}
               </ul>
             )}
           </Section>
 
-          {/* Tasks */}
           <Section title="Aufgaben">
             {!c.tasks || c.tasks.length === 0 ? (
               <p className="text-sm text-gray-500">Aktuell sind keine Aufgaben offen.</p>
             ) : (
-              <ul className="divide-y divide-gray-100">
+              <div className="space-y-2">
                 {c.tasks.map(task => (
-                  <li key={String(task.id)} className="py-2 flex items-center justify-between gap-3">
-                    <span className="text-sm text-gray-700">{task.name ?? `Aufgabe ${task.id}`}</span>
-                    <button
-                      type="button"
-                      className="text-xs font-semibold text-brand-red hover:underline"
-                      onClick={() => alert('Fragebogen wird im nächsten Schritt aktiviert.')}
-                    >
-                      Bearbeiten
-                    </button>
-                  </li>
+                  <TaskBlock key={task.id} task={task} caseId={id} onChange={reload} />
                 ))}
-              </ul>
+              </div>
             )}
           </Section>
 
-          {/* Upload placeholder */}
           <Section title="Dokumente hochladen">
-            <p className="text-sm text-gray-500">Upload wird im nächsten Schritt aktiviert.</p>
+            <UploadBox caseId={id} onUploaded={reload} />
           </Section>
         </div>
       )}

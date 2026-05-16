@@ -37,17 +37,86 @@ query CaseDetail($id: Int!) {
       }
       communications {
         items {
+          __typename
           id
           subject
           tags { name }
+          ... on FileCommunication {
+            files { id name contentType }
+          }
         }
       }
       tasksWithQuestionnaires {
         id
+        isCompleted
         tags { name }
+        questionnaire {
+          visibleSections
+          visibleQuestions
+          unansweredQuestions
+          answers {
+            ... on DateTimeQuestionnaireAnswer { __typename questionId dateTimeValue: value }
+            ... on ChoiceQuestionnaireAnswer   { __typename questionId choiceValue: value }
+            ... on TextQuestionnaireAnswer     { __typename questionId textValue: value }
+            ... on BoolQuestionnaireAnswer     { __typename questionId boolValue: value }
+          }
+          definition {
+            sections {
+              key
+              elements {
+                ... on QuestionnaireDateTimeQuestion { __typename key name useTime }
+                ... on QuestionnaireChoiceQuestion   { __typename key name canSelectMultiple options { key text } }
+                ... on QuestionnaireTextQuestion     { __typename key name }
+                ... on QuestionnaireBooleanQuestion  { __typename key name }
+              }
+            }
+          }
+        }
       }
     }
   }
+}
+""";
+
+    /// <summary>Updates a task's questionnaire answers and optionally completes the task.</summary>
+    public const string UpdateTaskQuestionnaire = """
+mutation UpdateTaskQuestionnaire($id: Int!, $answers: [QuestionnaireAnswerInput!]!, $completeTask: Boolean!) {
+  updateTask(input: { id: $id, questionnaire: { answers: $answers, completeTask: $completeTask, tags: [] } }) {
+    ... on Task {
+      id
+      isCompleted
+      questionnaire {
+        visibleSections
+        visibleQuestions
+        unansweredQuestions
+        answers {
+          ... on DateTimeQuestionnaireAnswer { __typename questionId dateTimeValue: value }
+          ... on ChoiceQuestionnaireAnswer   { __typename questionId choiceValue: value }
+          ... on TextQuestionnaireAnswer     { __typename questionId textValue: value }
+          ... on BoolQuestionnaireAnswer     { __typename questionId boolValue: value }
+        }
+      }
+    }
+  }
+}
+""";
+
+    /// <summary>Attaches a previously-uploaded temp file to a claim as a FileCommunication addressed to the claimant.</summary>
+    public const string CreateFileCommunication = """
+mutation CreateFileCommunication($claimId: Int!, $clientId: Int!, $fileId: String!, $subject: String!) {
+  createCommunication(
+    parentId: $claimId
+    parentType: CLAIM
+    input: {
+      file: {
+        subject: $subject
+        content: ""
+        recipient: { type: CLIENT, id: $clientId }
+        uploadedAttachedFileIds: [$fileId]
+        tags: [{ name: "aerzteportal" }]
+      }
+    }
+  ) { __typename }
 }
 """;
 
