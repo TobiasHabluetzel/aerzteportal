@@ -3,6 +3,10 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers()
     .AddJsonOptions(o => o.JsonSerializerOptions.Converters.Add(
         new System.Text.Json.Serialization.JsonStringEnumConverter()));
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddSingleton<Aerzteportal.Api.Services.SessionStore>();
+builder.Services.AddScoped<Aerzteportal.Api.Services.NisAuthService>();
+builder.Services.AddScoped<Aerzteportal.Api.Services.NisSession>();
 
 // NIS — base URL only. Per-request auth is handled by the auth layer using
 // the doctor's credentials and short-lived access tokens, not a static API
