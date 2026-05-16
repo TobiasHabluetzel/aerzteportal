@@ -48,6 +48,77 @@ public class CasesController(NisGraphQLService gql, NisSession session) : Contro
         return Ok(claims);
     }
 
+    [HttpGet("{id:int}")]
+    public async Task<IActionResult> Get(int id, CancellationToken ct)
+    {
+        if (await session.GetAccessTokenAsync(ct) is null) return Unauthorized();
+
+        var data = await gql.QueryAsync("CaseDetail", NisQueries.CaseDetail, new { id }, ct);
+        if (data is null || !data.Value.TryGetProperty("claim", out var claim) || claim.ValueKind != JsonValueKind.Object)
+            return NotFound();
+
+        // Pass through most of the claim but strip the tag-filtered surfaces
+        // down to "aerzteportal" — anything else is internal to NIS and not
+        // for the external doctor.
+        var filteredCommunications = FilterByTag(
+            claim.TryGetProperty("communications", out var comms)
+                && comms.ValueKind == JsonValueKind.Object
+                && comms.TryGetProperty("items", out var commItems)
+                && commItems.ValueKind == JsonValueKind.Array
+                    ? commItems
+                    : default,
+            "aerzteportal");
+
+        var filteredTasks = FilterByTag(
+            claim.TryGetProperty("tasksWithQuestionnaires", out var tasks) && tasks.ValueKind == JsonValueKind.Array
+                ? tasks
+                : default,
+            "aerzteportal");
+
+        return Ok(new
+        {
+            id = claim.TryGetProperty("id", out var idEl) ? idEl.GetRawText().Trim('"') : null,
+            number = StringFrom(claim, "number"),
+            status = StringFrom(claim, "status"),
+            createdOn = StringFrom(claim, "createdOn"),
+            incidentOn = StringFrom(claim, "incidentOn"),
+            phase = claim.TryGetProperty("phase", out var phase) ? (object?)phase : null,
+            claimant = claim.TryGetProperty("claimant", out var claimant) ? (object?)claimant : null,
+            incidentLocation = claim.TryGetProperty("incidentLocation", out var loc) ? (object?)loc : null,
+            coverCause = claim.TryGetProperty("coverCause", out var cc) ? (object?)cc : null,
+            diagnoses = claim.TryGetProperty("diagnoses", out var dx) ? (object?)dx : null,
+            policy = claim.TryGetProperty("policy", out var pol) ? (object?)pol : null,
+            communications = filteredCommunications,
+            tasks = filteredTasks,
+        });
+    }
+
+    private static JsonElement[] FilterByTag(JsonElement arr, string tag)
+    {
+        if (arr.ValueKind != JsonValueKind.Array) return Array.Empty<JsonElement>();
+        var result = new List<JsonElement>();
+        foreach (var item in arr.EnumerateArray())
+        {
+            if (!item.TryGetProperty("tags", out var tags) || tags.ValueKind != JsonValueKind.Array) continue;
+            var match = false;
+            foreach (var t in tags.EnumerateArray())
+            {
+                if (t.TryGetProperty("name", out var name)
+                    && name.ValueKind == JsonValueKind.String
+                    && string.Equals(name.GetString(), tag, StringComparison.OrdinalIgnoreCase))
+                {
+                    match = true;
+                    break;
+                }
+            }
+            if (match) result.Add(item);
+        }
+        return result.ToArray();
+    }
+
+    private static string? StringFrom(JsonElement el, string prop)
+        => el.TryGetProperty(prop, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() : null;
+
     private static bool TryGetInt(JsonElement el, out int value)
     {
         switch (el.ValueKind)
