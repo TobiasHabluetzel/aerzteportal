@@ -11,7 +11,7 @@ namespace Aerzteportal.Api.Services;
 /// refresh token, and reuses the refresh token to mint new access tokens
 /// when the current one is close to expiry.
 /// </summary>
-public class NisAuthService(IHttpClientFactory httpClientFactory, ILogger<NisAuthService> logger)
+public class NisAuthService(IHttpClientFactory httpClientFactory, IConfiguration config, ILogger<NisAuthService> logger)
 {
     private static readonly JsonSerializerOptions JsonOpts = new()
     {
@@ -19,8 +19,12 @@ public class NisAuthService(IHttpClientFactory httpClientFactory, ILogger<NisAut
         Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) },
     };
 
-    public async Task<NisLoginResponse> LoginAsync(string organisationCode, string username, string password, CancellationToken ct)
+    public async Task<NisLoginResponse> LoginAsync(string username, string password, CancellationToken ct)
     {
+        // Organisation code is set per deployment (Nis__OrganisationCode env
+        // var on Railway), not entered by the doctor on every login.
+        var organisationCode = config["Nis:OrganisationCode"] ?? "";
+
         var client = httpClientFactory.CreateClient("Nis");
         var body = JsonSerializer.Serialize(new { organisationCode, username, password }, JsonOpts);
         using var req = new HttpRequestMessage(HttpMethod.Post, "api/auth")

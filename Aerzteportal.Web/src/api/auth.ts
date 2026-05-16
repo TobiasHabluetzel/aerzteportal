@@ -11,11 +11,11 @@ export interface LoginResult {
   } | null
 }
 
-export async function login(organisationCode: string, username: string, password: string): Promise<void> {
+export async function login(username: string, password: string): Promise<void> {
   const res = await fetch(`${BASE}/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ organisationCode, username, password }),
+    body: JSON.stringify({ username, password }),
   })
   if (!res.ok) throw new Error('Invalid credentials')
 }
