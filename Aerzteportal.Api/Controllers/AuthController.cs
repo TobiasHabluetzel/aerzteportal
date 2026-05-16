@@ -11,15 +11,19 @@ public class AuthController(
     SessionStore store,
     NisSession session) : ControllerBase
 {
-    public record LoginRequest(string Username, string Password);
+    public record LoginRequest(string OrganisationCode, string Username, string Password);
 
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginRequest req, CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(req.Username) || string.IsNullOrWhiteSpace(req.Password))
-            return BadRequest(new { error = "Username and password are required." });
+        if (string.IsNullOrWhiteSpace(req.OrganisationCode)
+            || string.IsNullOrWhiteSpace(req.Username)
+            || string.IsNullOrWhiteSpace(req.Password))
+        {
+            return BadRequest(new { error = "Organisation, username and password are required." });
+        }
 
-        var login = await nis.LoginAsync(req.Username, req.Password, ct);
+        var login = await nis.LoginAsync(req.OrganisationCode, req.Username, req.Password, ct);
         if (!login.Success || login.Token is null || string.IsNullOrEmpty(login.Token.Token))
             return Unauthorized(new { error = login.Code ?? "wrongCredentials" });
 

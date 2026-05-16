@@ -9,7 +9,7 @@ interface User {
 interface AuthContextValue {
   user: User | null
   loading: boolean
-  login: (username: string, password: string) => Promise<void>
+  login: (organisationCode: string, username: string, password: string) => Promise<void>
   logout: () => Promise<void>
 }
 
@@ -25,8 +25,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .finally(() => setLoading(false))
   }, [])
 
-  async function login(username: string, password: string) {
-    await apiLogin(username, password)
+  async function login(organisationCode: string, username: string, password: string) {
+    await apiLogin(organisationCode, username, password)
     const r = await fetchMe()
     setUser(r.user)
   }

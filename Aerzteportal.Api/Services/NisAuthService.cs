@@ -11,7 +11,7 @@ namespace Aerzteportal.Api.Services;
 /// refresh token, and reuses the refresh token to mint new access tokens
 /// when the current one is close to expiry.
 /// </summary>
-public class NisAuthService(IHttpClientFactory httpClientFactory, IConfiguration config, ILogger<NisAuthService> logger)
+public class NisAuthService(IHttpClientFactory httpClientFactory, ILogger<NisAuthService> logger)
 {
     private static readonly JsonSerializerOptions JsonOpts = new()
     {
@@ -19,15 +19,10 @@ public class NisAuthService(IHttpClientFactory httpClientFactory, IConfiguration
         Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) },
     };
 
-    public async Task<NisLoginResponse> LoginAsync(string username, string password, CancellationToken ct)
+    public async Task<NisLoginResponse> LoginAsync(string organisationCode, string username, string password, CancellationToken ct)
     {
-        // Personal logins don't require an organisationCode — NIS derives the
-        // org from the user. We still allow it to be set explicitly so tenant
-        // logins work too. Default to empty string when unset.
-        var orgCode = config["Nis:OrganisationCode"] ?? "";
-
         var client = httpClientFactory.CreateClient("Nis");
-        var body = JsonSerializer.Serialize(new { organisationCode = orgCode, username, password }, JsonOpts);
+        var body = JsonSerializer.Serialize(new { organisationCode, username, password }, JsonOpts);
         using var req = new HttpRequestMessage(HttpMethod.Post, "api/auth")
         {
             Content = new StringContent(body, Encoding.UTF8, "application/json"),
