@@ -44,7 +44,6 @@ query CaseDetail($id: Int!) {
       }
       tasksWithQuestionnaires {
         id
-        name
         tags { name }
       }
     }
