@@ -21,8 +21,10 @@ public class NisAuthService(IHttpClientFactory httpClientFactory, IConfiguration
 
     public async Task<NisLoginResponse> LoginAsync(string username, string password, CancellationToken ct)
     {
-        var orgCode = config["Nis:OrganisationCode"]
-            ?? throw new InvalidOperationException("Nis:OrganisationCode is required");
+        // Personal logins don't require an organisationCode — NIS derives the
+        // org from the user. We still allow it to be set explicitly so tenant
+        // logins work too. Default to empty string when unset.
+        var orgCode = config["Nis:OrganisationCode"] ?? "";
 
         var client = httpClientFactory.CreateClient("Nis");
         var body = JsonSerializer.Serialize(new { organisationCode = orgCode, username, password }, JsonOpts);

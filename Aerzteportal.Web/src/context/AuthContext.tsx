@@ -3,9 +3,7 @@ import { me as fetchMe, login as apiLogin, logout as apiLogout } from '../api/au
 
 interface User {
   id: string
-  firstName?: string
-  lastName?: string
-  email?: string
+  name?: string | null
 }
 
 interface AuthContextValue {

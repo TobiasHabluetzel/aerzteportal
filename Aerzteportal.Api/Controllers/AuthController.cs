@@ -7,6 +7,7 @@ namespace Aerzteportal.Api.Controllers;
 [Route("api/auth")]
 public class AuthController(
     NisAuthService nis,
+    NisGraphQLService gql,
     SessionStore store,
     NisSession session) : ControllerBase
 {
@@ -33,9 +34,19 @@ public class AuthController(
         var token = await session.GetAccessTokenAsync(ct);
         if (token is null) return Ok(new { user = (object?)null });
 
-        // TODO: hit NIS GraphQL `me` here once we have the GraphQL client wired
-        // up. For now report just "logged in" so the SPA can route past /login.
-        return Ok(new { user = new { id = session.CurrentId } });
+        var data = await gql.QueryAsync("Me", NisQueries.Me, null, ct);
+        if (data is null || !data.Value.TryGetProperty("me", out var me) || me.ValueKind != System.Text.Json.JsonValueKind.Object)
+            return Ok(new { user = (object?)null });
+
+        return Ok(new
+        {
+            user = new
+            {
+                id = me.TryGetProperty("id", out var id) ? id.GetRawText().Trim('"') : null,
+                name = me.TryGetProperty("name", out var name) && name.ValueKind == System.Text.Json.JsonValueKind.String
+                    ? name.GetString() : null,
+            },
+        });
     }
 
     [HttpPost("logout")]

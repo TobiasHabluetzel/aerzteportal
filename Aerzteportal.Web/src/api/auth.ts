@@ -7,9 +7,7 @@ const BASE = '/api/auth'
 export interface LoginResult {
   user: {
     id: string
-    firstName?: string
-    lastName?: string
-    email?: string
+    name?: string | null
   } | null
 }
 
