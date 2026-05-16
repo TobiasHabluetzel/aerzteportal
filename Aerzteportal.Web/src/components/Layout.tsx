@@ -5,15 +5,17 @@ interface LayoutProps {
   children: React.ReactNode
   showBack?: boolean
   onBack?: () => void
+  wide?: boolean
 }
 
-export default function Layout({ children, showBack, onBack }: LayoutProps) {
+export default function Layout({ children, showBack, onBack, wide }: LayoutProps) {
   const brand = getBrand()
+  const innerWidth = wide ? 'max-w-5xl' : 'max-w-lg'
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Header */}
       <header className="bg-brand-red shadow-sm">
-        <div className="max-w-lg mx-auto px-4 py-3 flex items-center gap-3">
+        <div className={`${innerWidth} mx-auto px-4 py-3 flex items-center gap-3`}>
           {showBack && (
             <button
               onClick={onBack}
@@ -35,13 +37,13 @@ export default function Layout({ children, showBack, onBack }: LayoutProps) {
       </header>
 
       {/* Content */}
-      <main className="flex-1 max-w-lg mx-auto w-full px-4 py-6">
+      <main className={`flex-1 ${innerWidth} mx-auto w-full px-4 py-6`}>
         {children}
       </main>
 
       {/* Footer */}
       <footer className="border-t border-gray-200 bg-white">
-        <div className="max-w-lg mx-auto px-4 py-4 text-center text-xs text-gray-400 space-x-3">
+        <div className={`${innerWidth} mx-auto px-4 py-4 text-center text-xs text-gray-400 space-x-3`}>
           {brand.footer.map(link => (
             <a key={link.label} href={link.href} className="hover:text-gray-600" target="_blank" rel="noreferrer">
               {link.label}

@@ -8,31 +8,12 @@ function formatDate(iso?: string | null) {
   try { return new Date(iso).toLocaleDateString('de-DE') } catch { return iso }
 }
 
-function CaseRow({ c }: { c: CaseItem }) {
-  const claimant = c.claimant?.client?.name ?? '—'
-  const country = c.incidentLocation?.country?.name ?? '—'
-  const product = c.policy?.lastActiveSituation?.product?.displayName
-    ?? c.policy?.displayNumber ?? '—'
+function PhasePill({ name }: { name?: string | null }) {
+  if (!name) return <span className="text-xs text-gray-400">—</span>
   return (
-    <a
-      href={`/cases/${encodeURIComponent(c.id)}`}
-      className="block bg-white rounded-2xl shadow-sm px-5 py-4 hover:shadow transition-shadow"
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-xs font-semibold text-gray-400 tracking-wider">{c.number}</p>
-          <p className="text-base font-semibold text-gray-800 mt-0.5 truncate">{claimant}</p>
-          <p className="text-xs text-gray-500 mt-1">{product}</p>
-        </div>
-        <div className="text-right shrink-0">
-          {c.phase?.name && (
-            <span className="text-xs font-medium px-2 py-0.5 rounded bg-gray-100 text-gray-700">{c.phase.name}</span>
-          )}
-          <p className="text-xs text-gray-400 mt-1">{formatDate(c.incidentOn ?? c.createdOn)}</p>
-          <p className="text-xs text-gray-400">{country}</p>
-        </div>
-      </div>
-    </a>
+    <span className="inline-block text-xs font-medium px-2 py-0.5 rounded bg-gray-100 text-gray-700">
+      {name}
+    </span>
   )
 }
 
@@ -51,11 +32,11 @@ export default function CasesPage() {
   const greeting = user?.name ?? 'Doctor'
 
   return (
-    <Layout>
-      <div className="flex items-start justify-between gap-3 mb-5">
+    <Layout wide>
+      <div className="flex items-center justify-between gap-3 mb-5">
         <div>
           <h1 className="text-xl font-bold text-gray-800">Willkommen, {greeting}</h1>
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="text-sm text-gray-500 mt-0.5">
             {cases === null ? 'Lade Fälle…' : `${total} offene Fälle`}
           </p>
         </div>
@@ -65,20 +46,55 @@ export default function CasesPage() {
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-100 rounded-2xl px-4 py-3 text-sm text-red-600">
+        <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 text-sm text-red-600 mb-4">
           Fälle konnten nicht geladen werden: {error}
         </div>
       )}
 
       {cases !== null && cases.length === 0 && !error && (
-        <div className="bg-white rounded-2xl shadow-sm px-5 py-6 text-sm text-gray-500 text-center">
+        <div className="bg-white rounded-xl shadow-sm px-5 py-6 text-sm text-gray-500 text-center">
           Aktuell sind Ihnen keine offenen Fälle zugewiesen.
         </div>
       )}
 
-      <div className="space-y-3">
-        {cases?.map(c => <CaseRow key={c.id} c={c} />)}
-      </div>
+      {cases && cases.length > 0 && (
+        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 text-xs text-gray-500 uppercase tracking-wider">
+              <tr>
+                <th className="text-left px-4 py-3 font-medium">Fallnr.</th>
+                <th className="text-left px-4 py-3 font-medium">Patient</th>
+                <th className="text-left px-4 py-3 font-medium">Produkt</th>
+                <th className="text-left px-4 py-3 font-medium">Phase</th>
+                <th className="text-left px-4 py-3 font-medium">Schadensdatum</th>
+                <th className="text-left px-4 py-3 font-medium">Land</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {cases.map(c => {
+                const claimant = c.claimant?.client?.name ?? '—'
+                const product = c.policy?.lastActiveSituation?.product?.displayName
+                  ?? c.policy?.displayNumber ?? '—'
+                const country = c.incidentLocation?.country?.name ?? '—'
+                return (
+                  <tr
+                    key={c.id}
+                    onClick={() => { window.location.href = `/cases/${encodeURIComponent(c.id)}` }}
+                    className="hover:bg-gray-50 cursor-pointer"
+                  >
+                    <td className="px-4 py-3 font-mono text-xs text-gray-500">{c.number}</td>
+                    <td className="px-4 py-3 font-medium text-gray-800">{claimant}</td>
+                    <td className="px-4 py-3 text-gray-700">{product}</td>
+                    <td className="px-4 py-3"><PhasePill name={c.phase?.name} /></td>
+                    <td className="px-4 py-3 text-gray-700">{formatDate(c.incidentOn ?? c.createdOn)}</td>
+                    <td className="px-4 py-3 text-gray-700">{country}</td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
     </Layout>
   )
 }
