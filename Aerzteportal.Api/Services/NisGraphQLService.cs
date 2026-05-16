@@ -16,6 +16,10 @@ public class NisGraphQLService(
     NisSession session,
     ILogger<NisGraphQLService> logger)
 {
+    private static string Trim(string s, int max = 800)
+        => s.Length <= max ? s : s.Substring(0, max) + "…";
+
+
     public async Task<JsonElement?> QueryAsync(string operationName, string query, object? variables, CancellationToken ct)
     {
         var token = await session.GetAccessTokenAsync(ct);
@@ -41,7 +45,7 @@ public class NisGraphQLService(
         var json = await res.Content.ReadAsStringAsync(ct);
         if (!res.IsSuccessStatusCode)
         {
-            logger.LogWarning("[nis-gql] {Op} HTTP {Status}: {Body}", operationName, (int)res.StatusCode, json);
+            logger.LogWarning("[nis-gql] {Op} HTTP {Status}: {Body}", operationName, (int)res.StatusCode, Trim(json));
             return null;
         }
 
@@ -51,6 +55,8 @@ public class NisGraphQLService(
             logger.LogWarning("[nis-gql] {Op} returned errors: {Errors}", operationName, errs.GetRawText());
         }
         if (!doc.RootElement.TryGetProperty("data", out var data)) return null;
-        return data.Clone();
+        var cloned = data.Clone();
+        logger.LogInformation("[nis-gql] {Op} ok; data preview: {Preview}", operationName, Trim(cloned.GetRawText(), 400));
+        return cloned;
     }
 }
